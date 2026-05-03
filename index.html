@@ -1,0 +1,854 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Product Studio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<style>
+:root {
+  --panel-bg: rgba(12,12,14,0.92);
+  --border: rgba(255,255,255,0.07);
+  --text: #c8c8cc;
+  --text-dim: rgba(200,200,204,0.38);
+  --accent: #e8e0d0;
+  --panel-w: 280px;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+html, body { width:100%; height:100%; overflow:hidden; background:#0c0c0e; }
+
+/* ── Canvas ── */
+#viewport {
+  position: fixed;
+  inset: 0;
+  right: var(--panel-w);
+}
+canvas { display:block; width:100%!important; height:100%!important; }
+
+/* ── Right panel ── */
+#panel {
+  position: fixed;
+  top: 0; right: 0; bottom: 0;
+  width: var(--panel-w);
+  background: var(--panel-bg);
+  border-left: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  backdrop-filter: blur(20px);
+  font-family: 'DM Mono', monospace;
+}
+
+#panel-header {
+  padding: 20px 18px 14px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.studio-wordmark {
+  font-family: 'Instrument Serif', serif;
+  font-style: italic;
+  font-size: 18px;
+  color: var(--accent);
+  letter-spacing: -0.01em;
+}
+.studio-sub {
+  font-size: 9px;
+  color: var(--text-dim);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  margin-top: 2px;
+}
+
+#panel-body {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,0.1) transparent;
+}
+#panel-body::-webkit-scrollbar { width: 3px; }
+#panel-body::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 2px; }
+
+.section {
+  border-bottom: 1px solid var(--border);
+  padding: 14px 18px;
+}
+.section-label {
+  font-size: 9px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin-bottom: 12px;
+}
+
+/* Backdrop color swatches */
+.swatch-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 5px;
+  margin-bottom: 10px;
+}
+.swatch {
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 4px;
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: transform 0.15s, border-color 0.15s;
+}
+.swatch:hover { transform: scale(1.12); }
+.swatch.active { border-color: var(--accent); }
+
+.color-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.color-row label { font-size: 10px; color: var(--text-dim); flex:1; }
+input[type=color] {
+  width: 32px; height: 22px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: none;
+  cursor: pointer;
+  padding: 1px;
+}
+
+/* Lighting presets */
+.preset-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 5px;
+  margin-bottom: 2px;
+}
+.preset-btn {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 7px 6px;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all 0.15s;
+  text-align: center;
+}
+.preset-btn:hover, .preset-btn.active {
+  background: rgba(255,255,255,0.09);
+  border-color: rgba(255,255,255,0.22);
+  color: var(--accent);
+}
+
+/* Light controls */
+.light-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 9px;
+}
+.light-row .lbl {
+  font-size: 9px;
+  color: var(--text-dim);
+  width: 52px;
+  flex-shrink: 0;
+  letter-spacing: 0.08em;
+}
+.light-row input[type=range] {
+  flex: 1;
+  -webkit-appearance: none;
+  height: 2px;
+  background: rgba(255,255,255,0.12);
+  border-radius: 1px;
+  outline: none;
+  cursor: pointer;
+}
+.light-row input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 11px; height: 11px;
+  border-radius: 50%;
+  background: var(--accent);
+  cursor: pointer;
+  border: none;
+}
+.light-row .val {
+  font-size: 9px;
+  color: var(--text-dim);
+  width: 24px;
+  text-align: right;
+}
+.light-row input[type=color] {
+  width: 22px; height: 16px;
+  border-radius: 3px;
+}
+
+/* Toggle */
+.toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.toggle-row span {
+  font-size: 9px;
+  color: var(--text-dim);
+  letter-spacing: 0.08em;
+}
+.toggle {
+  width: 30px; height: 16px;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.1);
+  position: relative;
+  cursor: pointer;
+  transition: background 0.2s;
+  border: none;
+  flex-shrink: 0;
+}
+.toggle.on { background: rgba(232,224,208,0.5); }
+.toggle::after {
+  content: '';
+  position: absolute;
+  top: 2px; left: 2px;
+  width: 12px; height: 12px;
+  border-radius: 50%;
+  background: var(--accent);
+  transition: transform 0.2s;
+}
+.toggle.on::after { transform: translateX(14px); }
+
+/* Camera */
+.cam-grid {
+  display: grid;
+  grid-template-columns: repeat(3,1fr);
+  gap: 5px;
+}
+.cam-btn {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 6px 4px;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all 0.15s;
+  text-align: center;
+}
+.cam-btn:hover { background: rgba(255,255,255,0.07); color: var(--accent); }
+
+/* Panel footer */
+#panel-footer {
+  padding: 12px 18px;
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+}
+#snap-btn {
+  width: 100%;
+  padding: 11px;
+  background: var(--accent);
+  color: #0c0c0e;
+  border: none;
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  cursor: pointer;
+  border-radius: 5px;
+  transition: opacity 0.15s, transform 0.1s;
+}
+#snap-btn:hover { opacity: 0.88; }
+#snap-btn:active { transform: scale(0.98); }
+#snap-feedback {
+  text-align: center;
+  font-size: 9px;
+  color: var(--text-dim);
+  margin-top: 7px;
+  min-height: 12px;
+  letter-spacing: 0.1em;
+}
+
+/* Top bar overlay */
+#topbar {
+  position: fixed;
+  top: 0; left: 0;
+  right: var(--panel-w);
+  height: 42px;
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  gap: 10px;
+  pointer-events: none;
+  z-index: 5;
+}
+.topbar-pill {
+  background: var(--panel-bg);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 4px 12px;
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  color: var(--text-dim);
+  letter-spacing: 0.12em;
+  pointer-events: auto;
+  cursor: default;
+  backdrop-filter: blur(12px);
+}
+</style>
+</head>
+<body>
+
+<div id="topbar">
+  <div class="topbar-pill">DRAG · ORBIT</div>
+  <div class="topbar-pill">SCROLL · ZOOM</div>
+  <div class="topbar-pill" id="fps-pill">— fps</div>
+</div>
+
+<div id="viewport"></div>
+
+<div id="panel">
+  <div id="panel-header">
+    <div class="studio-wordmark">Studio</div>
+    <div class="studio-sub">Product Visualiser</div>
+  </div>
+
+  <div id="panel-body">
+
+    <!-- BACKDROP -->
+    <div class="section">
+      <div class="section-label">Backdrop</div>
+      <div class="swatch-grid" id="swatches"></div>
+      <div class="color-row">
+        <label>Custom</label>
+        <input type="color" id="custom-color" value="#f0ece4">
+      </div>
+    </div>
+
+    <!-- LIGHTING PRESETS -->
+    <div class="section">
+      <div class="section-label">Light Preset</div>
+      <div class="preset-grid" id="preset-grid"></div>
+    </div>
+
+    <!-- KEY LIGHT -->
+    <div class="section">
+      <div class="section-label">Key Light</div>
+      <div class="light-row">
+        <span class="lbl">Intensity</span>
+        <input type="range" id="key-int" min="0" max="10" step="0.1" value="4">
+        <span class="val" id="key-int-v">4.0</span>
+      </div>
+      <div class="light-row">
+        <span class="lbl">Angle H</span>
+        <input type="range" id="key-h" min="-180" max="180" step="1" value="45">
+        <span class="val" id="key-h-v">45°</span>
+      </div>
+      <div class="light-row">
+        <span class="lbl">Angle V</span>
+        <input type="range" id="key-v" min="5" max="85" step="1" value="55">
+        <span class="val" id="key-v-v">55°</span>
+      </div>
+      <div class="light-row">
+        <span class="lbl">Color</span>
+        <input type="color" id="key-color" value="#fff8f0">
+      </div>
+    </div>
+
+    <!-- FILL LIGHT -->
+    <div class="section">
+      <div class="section-label">Fill Light</div>
+      <div class="light-row">
+        <span class="lbl">Intensity</span>
+        <input type="range" id="fill-int" min="0" max="6" step="0.1" value="1.5">
+        <span class="val" id="fill-int-v">1.5</span>
+      </div>
+      <div class="light-row">
+        <span class="lbl">Angle H</span>
+        <input type="range" id="fill-h" min="-180" max="180" step="1" value="-110">
+        <span class="val" id="fill-h-v">-110°</span>
+      </div>
+      <div class="light-row">
+        <span class="lbl">Color</span>
+        <input type="color" id="fill-color" value="#d8e8ff">
+      </div>
+    </div>
+
+    <!-- RIM LIGHT -->
+    <div class="section">
+      <div class="section-label">Rim Light</div>
+      <div class="light-row">
+        <span class="lbl">Intensity</span>
+        <input type="range" id="rim-int" min="0" max="8" step="0.1" value="2">
+        <span class="val" id="rim-int-v">2.0</span>
+      </div>
+      <div class="light-row">
+        <span class="lbl">Angle H</span>
+        <input type="range" id="rim-h" min="-180" max="180" step="1" value="170">
+        <span class="val" id="rim-h-v">170°</span>
+      </div>
+      <div class="light-row">
+        <span class="lbl">Color</span>
+        <input type="color" id="rim-color" value="#ffffff">
+      </div>
+    </div>
+
+    <!-- AMBIENT -->
+    <div class="section">
+      <div class="section-label">Ambient</div>
+      <div class="light-row">
+        <span class="lbl">Intensity</span>
+        <input type="range" id="amb-int" min="0" max="4" step="0.05" value="0.6">
+        <span class="val" id="amb-int-v">0.60</span>
+      </div>
+      <div class="light-row">
+        <span class="lbl">Color</span>
+        <input type="color" id="amb-color" value="#e8eeff">
+      </div>
+    </div>
+
+    <!-- OPTIONS -->
+    <div class="section">
+      <div class="section-label">Options</div>
+      <div class="toggle-row">
+        <span>Auto-rotate</span>
+        <button class="toggle" id="tog-rotate"></button>
+      </div>
+      <div class="toggle-row">
+        <span>Shadow</span>
+        <button class="toggle on" id="tog-shadow"></button>
+      </div>
+      <div class="toggle-row">
+        <span>Ground plane</span>
+        <button class="toggle on" id="tog-ground"></button>
+      </div>
+    </div>
+
+    <!-- CAMERA -->
+    <div class="section">
+      <div class="section-label">Camera</div>
+      <div class="cam-grid">
+        <button class="cam-btn" onclick="setCam('front')">Front</button>
+        <button class="cam-btn" onclick="setCam('side')">Side</button>
+        <button class="cam-btn" onclick="setCam('top')">Top</button>
+        <button class="cam-btn" onclick="setCam('45')">¾ Low</button>
+        <button class="cam-btn" onclick="setCam('hero')">Hero</button>
+        <button class="cam-btn" onclick="setCam('macro')">Macro</button>
+      </div>
+    </div>
+
+  </div><!-- panel-body -->
+
+  <div id="panel-footer">
+    <button id="snap-btn" onclick="takeSnapshot()">⬡ Capture Snapshot</button>
+    <div id="snap-feedback"></div>
+  </div>
+</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
+
+// ─── Renderer ────────────────────────────────────────────────────────────────
+const container = document.getElementById('viewport');
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.15;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+container.appendChild(renderer.domElement);
+
+function resizeRenderer() {
+  const w = container.clientWidth, h = container.clientHeight;
+  renderer.setSize(w, h, false);
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+}
+
+// ─── Scene / Camera ──────────────────────────────────────────────────────────
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(38, 1, 0.01, 200);
+camera.position.set(0, 1.8, 5.5);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.055;
+controls.target.set(0, 0.6, 0);
+controls.minDistance = 1.2;
+controls.maxDistance = 14;
+
+// ─── Backdrop (curved cyc wall) ──────────────────────────────────────────────
+// Cylinder open at top, bottom and front — acts as curved infinity cove
+const cycGeo = new THREE.CylinderGeometry(7, 7, 9, 80, 1, true,
+  Math.PI * 0.35, Math.PI * 1.3);
+const cycMat = new THREE.MeshStandardMaterial({
+  color: 0xf0ece4,
+  roughness: 1.0,
+  metalness: 0.0,
+  side: THREE.BackSide,
+});
+const cyc = new THREE.Mesh(cycGeo, cycMat);
+cyc.position.set(0, 0.5, 0);
+cyc.receiveShadow = true;
+scene.add(cyc);
+
+// Floor disc — same material, seamless join
+const floorGeo = new THREE.CircleGeometry(7, 80);
+const floor = new THREE.Mesh(floorGeo, cycMat);
+floor.rotation.x = -Math.PI / 2;
+floor.position.y = -4;
+floor.receiveShadow = true;
+scene.add(floor);
+
+// Backdrop color setter
+function setBackdropColor(hex) {
+  const c = new THREE.Color(hex);
+  cycMat.color.set(c);
+  // tint scene bg slightly
+  scene.background = c.clone().multiplyScalar(0.55);
+}
+setBackdropColor('#f0ece4');
+
+// ─── Lights ──────────────────────────────────────────────────────────────────
+const ambient = new THREE.HemisphereLight(0xe8eeff, 0x1a1a22, 0.6);
+scene.add(ambient);
+
+function makeDirLight(color, intensity, dist = 10) {
+  const l = new THREE.DirectionalLight(color, intensity);
+  l.castShadow = true;
+  l.shadow.mapSize.set(2048, 2048);
+  l.shadow.camera.near = 0.5;
+  l.shadow.camera.far = 40;
+  l.shadow.camera.left = -4; l.shadow.camera.right = 4;
+  l.shadow.camera.top = 4; l.shadow.camera.bottom = -4;
+  l.shadow.bias = -0.0003;
+  l.shadow.radius = 3;
+  scene.add(l);
+  scene.add(l.target);
+  return l;
+}
+
+const keyLight  = makeDirLight(0xfff8f0, 4.0);
+const fillLight = makeDirLight(0xd8e8ff, 1.5);
+const rimLight  = makeDirLight(0xffffff, 2.0);
+
+function updateLightPos(light, hDeg, vDeg, dist = 8) {
+  const h = THREE.MathUtils.degToRad(hDeg);
+  const v = THREE.MathUtils.degToRad(vDeg);
+  light.position.set(
+    Math.sin(h) * Math.cos(v) * dist,
+    Math.sin(v) * dist,
+    Math.cos(h) * Math.cos(v) * dist
+  );
+  light.target.position.set(0, 0.5, 0);
+  light.target.updateMatrixWorld();
+}
+updateLightPos(keyLight,  45,  55);
+updateLightPos(fillLight, -110, 25);
+updateLightPos(rimLight,  170, 30);
+
+// ─── Model ────────────────────────────────────────────────────────────────────
+const mattePlastic = new THREE.MeshStandardMaterial({
+  color: 0x0d0d0d, roughness: 0.92, metalness: 0.0,
+});
+const magnetMats = [0,1,2,3].map(i => new THREE.MeshStandardMaterial({
+  color: i%2===0 ? 0xa09898 : 0x9098a8,
+  roughness: 0.28, metalness: 0.90,
+}));
+
+let modelGroup = new THREE.Group();
+scene.add(modelGroup);
+let modelLoaded = false;
+
+new GLTFLoader().load('band.glb', gltf => {
+  const model = gltf.scene;
+  let magIdx = 0;
+  model.traverse(obj => {
+    if (!obj.isMesh) return;
+    obj.castShadow = true;
+    obj.receiveShadow = true;
+    if (obj.name === 'Object_1') {
+      obj.material = mattePlastic;
+    } else {
+      obj.material = magnetMats[magIdx++ % 4];
+    }
+  });
+  modelGroup.add(model);
+
+  // Centre
+  const bbox = new THREE.Box3().setFromObject(model);
+  const c = new THREE.Vector3(); bbox.getCenter(c);
+  const s = bbox.getSize(new THREE.Vector3());
+  const sc = 2.6 / Math.max(s.x, s.y, s.z);
+  model.scale.setScalar(sc);
+  model.position.sub(c.multiplyScalar(sc));
+
+  const bbox2 = new THREE.Box3().setFromObject(modelGroup);
+  modelGroup.position.y = -bbox2.min.y + floor.position.y + 4;
+
+  modelLoaded = true;
+}, undefined, e => console.error(e));
+
+// ─── Auto-rotate ──────────────────────────────────────────────────────────────
+let autoRotate = false;
+
+// ─── FPS counter ──────────────────────────────────────────────────────────────
+let frames = 0, lastFpsTime = performance.now();
+const fpsPill = document.getElementById('fps-pill');
+
+// ─── Render loop ──────────────────────────────────────────────────────────────
+function animate() {
+  requestAnimationFrame(animate);
+  if (autoRotate && modelLoaded) modelGroup.rotation.y += 0.004;
+  controls.update();
+  renderer.render(scene, camera);
+  frames++;
+  const now = performance.now();
+  if (now - lastFpsTime > 1000) {
+    fpsPill.textContent = frames + ' fps';
+    frames = 0; lastFpsTime = now;
+  }
+}
+resizeRenderer();
+animate();
+window.addEventListener('resize', resizeRenderer);
+
+// ─── Backdrop swatches ────────────────────────────────────────────────────────
+const SWATCHES = [
+  '#f5f0e8','#e8e0d0','#ffffff','#1a1a1e','#2a2a2e','#0d0d0d',
+  '#c8d4e0','#e0c8c8','#c8e0cc','#e8e4b0','#d4c0e8','#f0d8b8',
+];
+const swatchContainer = document.getElementById('swatches');
+let activeSwatchEl = null;
+SWATCHES.forEach(hex => {
+  const el = document.createElement('div');
+  el.className = 'swatch';
+  el.style.background = hex;
+  el.title = hex;
+  el.addEventListener('click', () => {
+    if (activeSwatchEl) activeSwatchEl.classList.remove('active');
+    el.classList.add('active');
+    activeSwatchEl = el;
+    setBackdropColor(hex);
+    document.getElementById('custom-color').value = hex;
+  });
+  swatchContainer.appendChild(el);
+});
+swatchContainer.children[0].click();
+document.getElementById('custom-color').addEventListener('input', e => {
+  if (activeSwatchEl) activeSwatchEl.classList.remove('active');
+  activeSwatchEl = null;
+  setBackdropColor(e.target.value);
+});
+
+// ─── Light presets ────────────────────────────────────────────────────────────
+const PRESETS = {
+  'Natural': {
+    key: { int:3.8, h:35, v:52, col:'#fff5e8' },
+    fill:{ int:1.2, h:-90, col:'#d8e8ff' },
+    rim: { int:0.8, h:160, col:'#ffffff' },
+    amb: { int:0.7, col:'#e8f0ff' },
+  },
+  'Drama': {
+    key: { int:6.0, h:20, v:40, col:'#ffffff' },
+    fill:{ int:0.3, h:-130, col:'#102030' },
+    rim: { int:4.0, h:175, col:'#c8d8ff' },
+    amb: { int:0.15, col:'#000010' },
+  },
+  'Sunset': {
+    key: { int:5.0, h:10, v:18, col:'#ff8840' },
+    fill:{ int:0.8, h:-80, col:'#4060c0' },
+    rim: { int:3.0, h:170, col:'#ff6020' },
+    amb: { int:0.4, col:'#301828' },
+  },
+  'Clean': {
+    key: { int:3.5, h:45, v:60, col:'#ffffff' },
+    fill:{ int:2.0, h:-110, col:'#f0f4ff' },
+    rim: { int:1.5, h:170, col:'#ffffff' },
+    amb: { int:1.0, col:'#ffffff' },
+  },
+  'Neon': {
+    key: { int:2.0, h:30, v:50, col:'#00ffcc' },
+    fill:{ int:2.0, h:-100, col:'#ff00aa' },
+    rim: { int:5.0, h:160, col:'#4400ff' },
+    amb: { int:0.2, col:'#000820' },
+  },
+  'Overcast': {
+    key: { int:2.0, h:0, v:80, col:'#c8d8e8' },
+    fill:{ int:1.8, h:180, col:'#d8e0e8' },
+    rim: { int:0.5, h:90, col:'#e0e8f0' },
+    amb: { int:1.5, col:'#d0d8e0' },
+  },
+  'Spotlight': {
+    key: { int:8.0, h:0, v:70, col:'#ffffff' },
+    fill:{ int:0.0, h:-90, col:'#000000' },
+    rim: { int:0.0, h:180, col:'#000000' },
+    amb: { int:0.05, col:'#000000' },
+  },
+  'Warm Studio': {
+    key: { int:4.5, h:55, v:48, col:'#ffe8c8' },
+    fill:{ int:1.8, h:-80, col:'#fff0e0' },
+    rim: { int:2.5, h:165, col:'#ffd080' },
+    amb: { int:0.6, col:'#302010' },
+  },
+};
+
+let activePresetBtn = null;
+const presetGrid = document.getElementById('preset-grid');
+Object.keys(PRESETS).forEach(name => {
+  const btn = document.createElement('button');
+  btn.className = 'preset-btn';
+  btn.textContent = name;
+  btn.addEventListener('click', () => {
+    applyPreset(PRESETS[name]);
+    if (activePresetBtn) activePresetBtn.classList.remove('active');
+    btn.classList.add('active');
+    activePresetBtn = btn;
+  });
+  presetGrid.appendChild(btn);
+});
+
+function applyPreset(p) {
+  // Key
+  setSlider('key-int', p.key.int); keyLight.intensity = p.key.int;
+  setSlider('key-h', p.key.h); setSlider('key-v', p.key.v);
+  updateLightPos(keyLight, p.key.h, p.key.v);
+  setColorInput('key-color', p.key.col); keyLight.color.set(p.key.col);
+  // Fill
+  setSlider('fill-int', p.fill.int); fillLight.intensity = p.fill.int;
+  setSlider('fill-h', p.fill.h);
+  updateLightPos(fillLight, p.fill.h, 25);
+  setColorInput('fill-color', p.fill.col); fillLight.color.set(p.fill.col);
+  // Rim
+  setSlider('rim-int', p.rim.int); rimLight.intensity = p.rim.int;
+  setSlider('rim-h', p.rim.h);
+  updateLightPos(rimLight, p.rim.h, 30);
+  setColorInput('rim-color', p.rim.col); rimLight.color.set(p.rim.col);
+  // Ambient
+  setSlider('amb-int', p.amb.int); ambient.intensity = p.amb.int;
+  setColorInput('amb-color', p.amb.col); ambient.color.set(p.amb.col);
+}
+function setSlider(id, val) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.value = val;
+  el.dispatchEvent(new Event('input'));
+}
+function setColorInput(id, val) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  // convert any color to hex
+  const tmp = new THREE.Color(val);
+  el.value = '#' + tmp.getHexString();
+}
+
+// ─── Slider wiring ────────────────────────────────────────────────────────────
+function wire(id, valId, cb, fmt = v => v.toFixed(1)) {
+  const el = document.getElementById(id);
+  const vEl = document.getElementById(valId);
+  el.addEventListener('input', () => {
+    const v = parseFloat(el.value);
+    if (vEl) vEl.textContent = fmt(v);
+    cb(v);
+  });
+}
+
+wire('key-int', 'key-int-v', v => keyLight.intensity = v);
+wire('key-h',   'key-h-v',   v => updateLightPos(keyLight, v, parseFloat(document.getElementById('key-v').value)), v => v+'°');
+wire('key-v',   'key-v-v',   v => updateLightPos(keyLight, parseFloat(document.getElementById('key-h').value), v), v => v+'°');
+wire('fill-int','fill-int-v',v => fillLight.intensity = v);
+wire('fill-h',  'fill-h-v',  v => updateLightPos(fillLight, v, 25), v => v+'°');
+wire('rim-int', 'rim-int-v', v => rimLight.intensity = v);
+wire('rim-h',   'rim-h-v',   v => updateLightPos(rimLight, v, 30), v => v+'°');
+wire('amb-int', 'amb-int-v', v => ambient.intensity = v, v => v.toFixed(2));
+
+document.getElementById('key-color').addEventListener('input', e => keyLight.color.set(e.target.value));
+document.getElementById('fill-color').addEventListener('input', e => fillLight.color.set(e.target.value));
+document.getElementById('rim-color').addEventListener('input', e => rimLight.color.set(e.target.value));
+document.getElementById('amb-color').addEventListener('input', e => ambient.color.set(e.target.value));
+
+// ─── Toggles ──────────────────────────────────────────────────────────────────
+function makeToggle(id, initOn, cb) {
+  const el = document.getElementById(id);
+  if (initOn) el.classList.add('on');
+  el.addEventListener('click', () => {
+    el.classList.toggle('on');
+    cb(el.classList.contains('on'));
+  });
+}
+makeToggle('tog-rotate', false, v => autoRotate = v);
+makeToggle('tog-shadow', true,  v => {
+  renderer.shadowMap.enabled = v;
+  [keyLight, fillLight, rimLight].forEach(l => l.castShadow = v);
+});
+makeToggle('tog-ground', true, v => {
+  floor.visible = v;
+});
+
+// ─── Camera presets ───────────────────────────────────────────────────────────
+const CAM_PRESETS = {
+  front:  { pos: [0, 0.9, 5.5], target: [0, 0.6, 0] },
+  side:   { pos: [5.5, 0.9, 0], target: [0, 0.6, 0] },
+  top:    { pos: [0, 6.0, 0.1], target: [0, 0.6, 0] },
+  '45':   { pos: [3.5, 0.4, 3.5], target: [0, 0.2, 0] },
+  hero:   { pos: [2.5, 2.0, 4.0], target: [0, 0.8, 0] },
+  macro:  { pos: [0.8, 1.0, 2.0], target: [0, 0.8, 0] },
+};
+window.setCam = name => {
+  const p = CAM_PRESETS[name];
+  if (!p) return;
+  const duration = 800;
+  const start = performance.now();
+  const fromPos = camera.position.clone();
+  const fromTgt = controls.target.clone();
+  const toPos = new THREE.Vector3(...p.pos);
+  const toTgt = new THREE.Vector3(...p.target);
+  function lerp(t) {
+    const a = performance.now();
+    const f = Math.min((a - start) / duration, 1);
+    const e = 1 - Math.pow(1 - f, 3); // ease-out cubic
+    camera.position.lerpVectors(fromPos, toPos, e);
+    controls.target.lerpVectors(fromTgt, toTgt, e);
+    controls.update();
+    if (f < 1) requestAnimationFrame(lerp);
+  }
+  requestAnimationFrame(lerp);
+};
+
+// ─── Snapshot ─────────────────────────────────────────────────────────────────
+window.takeSnapshot = () => {
+  renderer.render(scene, camera);
+  const data = renderer.domElement.toDataURL('image/png');
+  const a = document.createElement('a');
+  a.href = data;
+  a.download = 'product_' + Date.now() + '.png';
+  a.click();
+  const fb = document.getElementById('snap-feedback');
+  fb.textContent = 'saved ✓';
+  setTimeout(() => fb.textContent = '', 2200);
+};
+
+// Apply Natural preset on load
+setTimeout(() => {
+  const btn = presetGrid.querySelector('.preset-btn');
+  if (btn) btn.click();
+}, 100);
+
+</script>
+</body>
+</html>
